@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kitchenslip
+      POSTGRES_PASSWORD: kitchenslip
+      POSTGRES_DB: kitchenslip
+    ports:
+      - "5433:5432"
+    volumes:
+      - kitchenslip_pg:/var/lib/postgresql/data
+
+volumes:
+  kitchenslip_pg:

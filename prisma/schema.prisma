@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Vendor {
+  id        String           @id @default(cuid())
+  name      String
+  nicknames VendorNickname[]
+  drafts    BillDraft[]
+  orders    Order[]
+}
+
+model KitchenItem {
+  id           String           @id @default(cuid())
+  name         String           @unique
+  unit         String
+  typicalPrice Float
+  nicknames    VendorNickname[]
+  orderLines   OrderLine[]
+}
+
+model VendorNickname {
+  id            String      @id @default(cuid())
+  rawName       String
+  vendorId      String
+  kitchenItemId String
+  timesUsed     Int         @default(1)
+  vendor        Vendor      @relation(fields: [vendorId], references: [id])
+  kitchenItem   KitchenItem @relation(fields: [kitchenItemId], references: [id])
+
+  @@unique([rawName, vendorId])
+}
+
+model BillDraft {
+  id        String   @id @default(cuid())
+  status    String   @default("reading")
+  vendorId  String
+  fileName  String
+  mimeType  String
+  filePath  String
+  extracted Json?
+  draft     Json?
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  vendor    Vendor   @relation(fields: [vendorId], references: [id])
+  order     Order?
+
+  @@index([status])
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  vendorId    String
+  billDraftId String      @unique
+  slipNo      String?
+  slipDate    String?
+  total       Float
+  createdAt   DateTime    @default(now())
+  vendor      Vendor      @relation(fields: [vendorId], references: [id])
+  billDraft   BillDraft   @relation(fields: [billDraftId], references: [id])
+  lines       OrderLine[]
+}
+
+model OrderLine {
+  id            String       @id @default(cuid())
+  orderId       String
+  kitchenItemId String?
+  nameOnSlip    String
+  qty           Float
+  unit          String
+  price         Float
+  amount        Float
+  order         Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  kitchenItem   KitchenItem? @relation(fields: [kitchenItemId], references: [id])
+}
