@@ -36,6 +36,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     slipDate: body.slipDate ?? current.slipDate ?? null,
     lines,
     total: liveTotal(lines),
+    spokenText: body.spokenText ?? current.spokenText ?? null,
   };
 
   const updated = await prisma.billDraft.update({

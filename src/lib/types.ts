@@ -14,6 +14,7 @@ export type SlipDraft = {
   slipDate: string | null;
   lines: SlipLine[];
   total: number;
+  spokenText?: string | null;
 };
 
 export type ExtractedSlip = {
@@ -28,6 +29,7 @@ export type ExtractedSlip = {
     amount: number | null;
   }>;
   total: number | null;
+  spokenText?: string | null;
 };
 
 export type KitchenItemRow = {

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "release": "prisma migrate deploy && prisma db seed"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -16,8 +17,10 @@
     "@google/genai": "^1.30.0",
     "@prisma/client": "^6.19.0",
     "next": "16.4.3",
+    "pdf-to-img": "^6.3.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "sharp": "^0.35.5",
     "zod": "^4.1.12"
   },
   "devDependencies": {

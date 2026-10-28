@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { saveUpload } from "@/lib/files";
-import { readSlip } from "@/lib/extract";
-import { attachKitchenItems } from "@/lib/match";
+import { bytesHash } from "@/lib/hash";
+import { runReadJob } from "@/lib/read-job";
+
+export const maxDuration = 60;
 
 export async function GET() {
   const drafts = await prisma.billDraft.findMany({
@@ -17,6 +19,8 @@ export async function POST(request: NextRequest) {
   const form = await request.formData();
   const vendorId = String(form.get("vendorId") || "");
   const useSample = String(form.get("sample") || "") === "1";
+  const spoken = String(form.get("spoken") || "") === "1";
+  const transcript = String(form.get("transcript") || "").trim();
   const file = form.get("file");
 
   if (!vendorId) {
@@ -28,50 +32,46 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unknown vendor." }, { status: 404 });
   }
 
-  if (!useSample && (!(file instanceof File) || file.size === 0)) {
-    return NextResponse.json({ error: "Drop a photo or PDF of the slip." }, { status: 400 });
+  if (!useSample && !spoken && (!(file instanceof File) || file.size === 0)) {
+    return NextResponse.json({ error: "Drop a photo, PDF, or speak an order." }, { status: 400 });
   }
 
+  if (spoken && !transcript) {
+    return NextResponse.json({ error: "Say or type the order first." }, { status: 400 });
+  }
+
+  const source = spoken ? "spoken" : useSample ? "sample" : "upload";
   const draft = await prisma.billDraft.create({
     data: {
       vendorId,
       status: "reading",
-      fileName: useSample ? "sample-slip.txt" : (file as File).name,
-      mimeType: useSample ? "text/plain" : (file as File).type || "application/octet-stream",
+      source,
+      transcript: spoken ? transcript : null,
+      fileName: spoken ? "spoken.txt" : useSample ? "sample-slip.txt" : (file as File).name,
+      mimeType: spoken || useSample ? "text/plain" : (file as File).type || "application/octet-stream",
       filePath: "",
     },
   });
 
   try {
-    let buffer = Buffer.from("sample");
-    let mimeType = "text/plain";
-
-    if (!useSample && file instanceof File) {
-      const saved = await saveUpload(draft.id, file);
-      buffer = Buffer.from(await file.arrayBuffer());
-      mimeType = saved.mimeType;
+    if (source === "upload" && file instanceof File) {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const saved = await saveUpload(draft.id, file, buffer);
       await prisma.billDraft.update({
         where: { id: draft.id },
-        data: { filePath: saved.filePath, fileName: saved.fileName, mimeType: saved.mimeType },
+        data: {
+          filePath: saved.filePath,
+          fileName: saved.fileName,
+          mimeType: saved.mimeType,
+          fileHash: bytesHash(buffer),
+        },
       });
     }
 
-    const extracted = await readSlip({ buffer, mimeType, useSample });
-    const matched = await attachKitchenItems(vendorId, extracted);
-
-    const updated = await prisma.billDraft.update({
-      where: { id: draft.id },
-      data: {
-        status: "draft",
-        extracted: extracted as object,
-        draft: matched as object,
-      },
-      include: { vendor: true },
-    });
-
-    return NextResponse.json(updated);
+    after(() => runReadJob(draft.id));
+    return NextResponse.json({ id: draft.id, status: "reading" });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not read this slip.";
+    const message = error instanceof Error ? error.message : "Could not save this slip.";
     await prisma.billDraft.update({
       where: { id: draft.id },
       data: { status: "failed", error: message },

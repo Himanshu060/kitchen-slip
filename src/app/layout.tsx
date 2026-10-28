@@ -20,7 +20,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable} h-full`}>
+    <html
+      lang="en"
+      className={`${display.variable} ${sans.variable} h-full`}
+      suppressHydrationWarning
+    >
       <body className="min-h-full font-[family-name:var(--font-sans)] text-[var(--ink)]">
         <header className="mx-auto flex w-full max-w-6xl items-end justify-between px-6 pt-8 pb-4">
           <Link href="/" className="block">

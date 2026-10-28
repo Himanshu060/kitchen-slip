@@ -26,19 +26,21 @@ export async function attachKitchenItems(
 
     if (knownId) {
       const known = items.find((item) => item.id === knownId);
+      const nextPrice = price || known?.typicalPrice || 0;
       return {
         nameOnSlip,
         kitchenItemId: known?.id ?? null,
         kitchenItemName: known?.name ?? null,
         qty,
         unit: line.unit || known?.unit || "kg",
-        price,
-        amount,
+        price: nextPrice,
+        amount: qty * nextPrice,
       };
     }
 
     const best = pickBest(nameOnSlip, items);
     const prefill = best && best.score > PREFILL_ABOVE;
+    const nextPrice = price || (prefill ? best.item.typicalPrice : 0);
 
     return {
       nameOnSlip,
@@ -46,8 +48,8 @@ export async function attachKitchenItems(
       kitchenItemName: prefill ? best.item.name : null,
       qty,
       unit: line.unit || (prefill ? best.item.unit : "kg"),
-      price,
-      amount,
+      price: nextPrice,
+      amount: qty * nextPrice,
     };
   });
 
@@ -59,6 +61,7 @@ export async function attachKitchenItems(
     slipDate: extracted.slipDate,
     lines,
     total: Number(extracted.total ?? summed),
+    spokenText: extracted.spokenText ?? null,
   };
 }
 

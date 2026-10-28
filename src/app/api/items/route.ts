@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q")?.trim() ?? "";
   const items = await prisma.kitchenItem.findMany({
-    where: q ? { name: { contains: q } } : undefined,
+    where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
     orderBy: { name: "asc" },
     take: 40,
   });

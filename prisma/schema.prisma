@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -37,21 +37,25 @@ model VendorNickname {
 }
 
 model BillDraft {
-  id        String   @id @default(cuid())
-  status    String   @default("reading")
-  vendorId  String
-  fileName  String
-  mimeType  String
-  filePath  String
-  extracted Json?
-  draft     Json?
-  error     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  vendor    Vendor   @relation(fields: [vendorId], references: [id])
-  order     Order?
+  id         String   @id @default(cuid())
+  status     String   @default("reading")
+  source     String   @default("upload")
+  vendorId   String
+  fileName   String
+  mimeType   String
+  filePath   String
+  fileHash   String?
+  transcript String?
+  extracted  Json?
+  draft      Json?
+  error      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  vendor     Vendor   @relation(fields: [vendorId], references: [id])
+  order      Order?
 
   @@index([status])
+  @@index([fileHash])
 }
 
 model Order {

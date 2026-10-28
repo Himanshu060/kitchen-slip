@@ -40,14 +40,45 @@ export function DraftDesk({ id }: { id: string }) {
   }, []);
 
   useEffect(() => {
-    fetch(`/api/bills/${id}`)
-      .then((res) => res.json())
-      .then((data) => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const res = await fetch(`/api/bills/${id}`);
+        const data = await res.json();
+        if (cancelled) return;
         if (data.error) setError(data.error);
         else setRecord(data);
-      })
-      .catch(() => setError("Could not open this draft."));
+      } catch {
+        if (!cancelled) setError("Could not open this draft.");
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
+
+  useEffect(() => {
+    if (record?.status !== "reading") return;
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/bills/${id}`);
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.error) setError(data.error);
+        else setRecord(data);
+      } catch {
+        // Keep polling until the read finishes or the page leaves.
+      }
+    }, 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [id, record?.status]);
 
   const slip = record?.draft;
   const total = useMemo(
@@ -131,11 +162,20 @@ export function DraftDesk({ id }: { id: string }) {
     );
   }
 
-  if (!slip) {
-    return <p className="paper-sheet rounded-[28px] p-8">Still copying the slip onto paper…</p>;
+  if (record.status === "reading" || !slip) {
+    return (
+      <div className="paper-sheet rounded-[28px] p-8">
+        <p className="text-xs uppercase tracking-[0.2em] text-[var(--moss)]">Reading</p>
+        <p className="mt-2 font-[family-name:var(--font-display)] text-3xl">Copying the slip onto paper…</p>
+        <p className="mt-3 text-[var(--ink)]/65">
+          Names and quantities will land here in a few seconds. You can keep this page open.
+        </p>
+      </div>
+    );
   }
 
   const hasFile = Boolean(record.filePath);
+  const spokenText = slip.spokenText;
 
   return (
     <section className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
@@ -147,10 +187,14 @@ export function DraftDesk({ id }: { id: string }) {
           <div className="flex h-full min-h-[420px] flex-col justify-between p-8">
             <p className="text-xs uppercase tracking-[0.2em] text-[var(--moss)]">Source</p>
             <p className="font-[family-name:var(--font-display)] text-3xl italic">
-              {hasFile ? "PDF slip on file" : "Sample produce slip"}
+              {spokenText ? "Spoken at the counter" : hasFile ? "PDF slip on file" : "Sample produce slip"}
             </p>
             <p className="text-sm text-[var(--ink)]/60">
-              From {record.vendor.name}. The draft on the right is what we will write as an order.
+              {spokenText ? (
+                <>“{spokenText}”</>
+              ) : (
+                <>From {record.vendor.name}. The draft on the right is what we will write as an order.</>
+              )}
             </p>
           </div>
         )}
@@ -228,7 +272,8 @@ export function DraftDesk({ id }: { id: string }) {
                   <td className="pr-2 pb-3">
                     <input
                       type="number"
-                      step="0.01"
+                      step="1"
+                      min="0"
                       value={line.qty}
                       onChange={(event) => changeLine(index, { qty: Number(event.target.value) })}
                       className="w-20 border-b border-[var(--rule)] bg-transparent py-1 outline-none"
@@ -244,7 +289,8 @@ export function DraftDesk({ id }: { id: string }) {
                   <td className="pr-2 pb-3">
                     <input
                       type="number"
-                      step="0.01"
+                      step="1"
+                      min="0"
                       value={line.price}
                       onChange={(event) => changeLine(index, { price: Number(event.target.value) })}
                       className="w-20 border-b border-[var(--rule)] bg-transparent py-1 outline-none"
