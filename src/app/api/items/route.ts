@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   const items = await prisma.kitchenItem.findMany({
     where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
     orderBy: { name: "asc" },
-    take: 40,
+    take: q ? 40 : undefined,
   });
   return NextResponse.json(items);
 }

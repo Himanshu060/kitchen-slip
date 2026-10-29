@@ -55,18 +55,18 @@ function parseLocally(text: string): ExtractedSlip {
     .filter(Boolean);
 
   const lines = parts.map((part) => {
-    const match = part.match(
-      /^(?:(\d+(?:\.\d+)?)|([a-z]+))\s+(?:x\s+)?(.+)$/i,
-    );
-    if (!match) {
-      return { name: part, qty: 1, unit: "pcs", price: null, amount: null };
+    const digitMatch = part.match(/^(\d+(?:\.\d+)?)\s+(?:x\s+)?(.+)$/i);
+    if (digitMatch) {
+      return { name: digitMatch[2].trim(), qty: Number(digitMatch[1]), unit: "pcs", price: null, amount: null };
     }
 
-    const digit = match[1] ? Number(match[1]) : null;
-    const word = match[2] ? WORD_QTY[match[2].toLowerCase()] : undefined;
-    const qty = digit ?? word ?? 1;
-    const name = (match[3] || part).trim();
-    return { name, qty, unit: "pcs", price: null, amount: null };
+    const wordMatch = part.match(/^([a-z]+)\s+(?:x\s+)?(.+)$/i);
+    const wordQty = wordMatch ? WORD_QTY[wordMatch[1].toLowerCase()] : undefined;
+    if (wordMatch && wordQty) {
+      return { name: wordMatch[2].trim(), qty: wordQty, unit: "pcs", price: null, amount: null };
+    }
+
+    return { name: part, qty: 1, unit: "pcs", price: null, amount: null };
   });
 
   return {

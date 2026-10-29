@@ -81,6 +81,20 @@ export function DraftDesk({ id }: { id: string }) {
   }, [id, record?.status]);
 
   const slip = record?.draft;
+  const itemOptions = useMemo(() => {
+    const rows = [...items];
+    for (const line of slip?.lines ?? []) {
+      if (line.kitchenItemId && !rows.some((item) => item.id === line.kitchenItemId)) {
+        rows.push({
+          id: line.kitchenItemId,
+          name: line.kitchenItemName || line.nameOnSlip,
+          unit: line.unit,
+          typicalPrice: line.price,
+        });
+      }
+    }
+    return rows;
+  }, [items, slip?.lines]);
   const total = useMemo(
     () => (slip?.lines ?? []).reduce((sum, line) => sum + Number(line.qty || 0) * Number(line.price || 0), 0),
     [slip],
@@ -262,7 +276,7 @@ export function DraftDesk({ id }: { id: string }) {
                       className="w-full border-b border-[var(--rule)] bg-transparent py-1 outline-none"
                     >
                       <option value="">Pick an item</option>
-                      {items.map((item) => (
+                      {itemOptions.map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.name}
                         </option>
